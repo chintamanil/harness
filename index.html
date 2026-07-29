@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIDLC Autopilot Harness — Agent Reliability as an Architecture Problem</title>
+<meta name="description" content="An end-to-end AI development life cycle harness: eight coordinating agents driving a requirement from plan to merged PR, with review gates enforced in code rather than prompts.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:       #060910;
+  --surface:  #0d1420;
+  --surface2: #111d2e;
+  --border:   #162033;
+  --accent:   #00c8ff;
+  --accent2:  #7b61ff;
+  --green:    #00e5a0;
+  --red:      #ff4d6a;
+  --amber:    #ffb830;
+  --text:     #dce6f5;
+  --muted:    #9cbcda;
+  --heading:  #f0f6ff;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  overflow-x: hidden;
+}
+
+/* ── NOISE TEXTURE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(6,9,16,0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+}
+.nav-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  letter-spacing: 3px;
+  color: var(--accent);
+}
+.nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  color: #c0d8f0;
+  text-decoration: none;
+  letter-spacing: 1px;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--accent); }
+
+/* ── SECTIONS ── */
+section {
+  position: relative;
+  z-index: 1;
+  padding: 60px 64px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── HERO ── */
+.hero-section {
+  min-height: 0;
+  max-width: 100%;
+  padding: 88px 0 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  background: radial-gradient(ellipse 120% 80% at 80% 50%, rgba(0,200,255,0.06), transparent),
+              radial-gradient(ellipse 60% 60% at 10% 90%, rgba(123,97,255,0.06), transparent);
+  overflow: hidden;
+}
+.hero-inner {
+  position: relative;
+  z-index: 2;
+  padding: 0 80px;
+  width: 100%;
+  max-width: 1200px;
+}
+.hero-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--accent);
+}
+.hero-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(38px, 7.6vw, 104px);
+  line-height: 0.92;
+  color: var(--heading);
+  letter-spacing: 2px;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.hero-title .accent { color: var(--accent); }
+.hero-title .accent2 { color: var(--green); }
+.hero-sub {
+  font-size: clamp(13px, 1.5vw, 17px);
+  font-weight: 300;
+  color: var(--muted);
+  max-width: 100%;
+  margin: 16px 0 32px;
+  line-height: 1.5;
+}
+.hero-stats {
+  display: flex;
+  gap: 48px;
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  padding-bottom: 8px;
+}
+.hero-stat .num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  color: var(--accent);
+  line-height: 1;
+  display: block;
+}
+.hero-stat .label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+/* Grid bg lines */
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 100% 100% at 100% 50%, black 20%, transparent 70%);
+}
+
+/* ── SECTION HEADER ── */
+.sec-header {
+  margin-bottom: 52px;
+}
+.sec-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sec-tag::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: var(--accent);
+}
+.sec-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 4vw, 52px);
+  color: var(--heading);
+  letter-spacing: 2px;
+  line-height: 1;
+}
+.sec-desc {
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--muted);
+  max-width: 100%;
+  line-height: 1.65;
+  margin-bottom: 0;
+}
+
+/* ── DIAGRAM FRAMES ── */
+.diagram-frame {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 32px;
+}
+.diagram-bar {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-r { background: #ff5f57; }
+.dot-y { background: #febc2e; }
+.dot-g { background: #28c840; }
+.diagram-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 8px;
+  letter-spacing: 1px;
+}
+.diagram-body {
+  padding: 32px 24px;
+  overflow-x: auto;
+}
+.mermaid {
+  display: flex;
+  justify-content: center;
+}
+.mermaid svg { max-width: 100% !important; height: auto !important; }
+
+/* ── STATE LABEL ── */
+.state-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+.state-label.before { background: rgba(255,77,106,0.1); border: 1px solid rgba(255,77,106,0.3); color: #ff4d6a; }
+.state-label.after  { background: rgba(0,229,160,0.08); border: 1px solid rgba(0,229,160,0.3); color: #00e5a0; }
+
+/* ── IMPACT SECTION ── */
+.impact-section {
+  background: linear-gradient(135deg, rgba(0,200,255,0.04), rgba(123,97,255,0.04));
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 60px 64px 48px;
+  max-width: 100%;
+}
+.impact-inner { max-width: 1200px; margin: 0 auto; }
+
+.big-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin: 52px 0;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.big-stat {
+  background: var(--surface);
+  padding: 40px 32px;
+  text-align: center;
+}
+.big-stat .n {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 64px;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: block;
+  margin-bottom: 12px;
+}
+.big-stat .l {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.wins-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 8px;
+}
+.win-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 24px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s, transform 0.25s;
+}
+.win-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+.win-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.win-card.product::after { background: linear-gradient(90deg, var(--accent), transparent); }
+.win-card.tech::after    { background: linear-gradient(90deg, var(--green), transparent); }
+.win-card.lead::after    { background: linear-gradient(90deg, var(--amber), transparent); }
+
+.win-category {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+.win-category.product { color: var(--accent); }
+.win-category.tech    { color: var(--green); }
+.win-category.lead    { color: var(--amber); }
+
+.win-items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.win-items li {
+  font-size: 13.5px;
+  color: #8ba4c4;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.5;
+}
+.win-items li::before {
+  content: '✓';
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+/* ── CODE BLOCK ── */
+.code-block {
+  background: #040609;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 28px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.8;
+  overflow-x: auto;
+  color: #94a3b8;
+}
+.code-block .k  { color: #7b61ff; }
+.code-block .d  { color: #00c8ff; }
+.code-block .s  { color: #7bdf8e; }
+.code-block .c  { color: #3a5270; font-style: italic; }
+.code-block .n  { color: #ffc45e; }
+.code-block .com { color: #3669ac; font-style: italic; font-size: 11px; }
+
+/* ── TIMELINE ── */
+.timeline {
+  position: relative;
+  padding-left: 40px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent2) 50%, var(--green) 100%);
+  opacity: 0.3;
+}
+.tl-item {
+  position: relative;
+  padding: 0 0 36px 24px;
+}
+.tl-item::before {
+  content: '';
+  position: absolute;
+  left: -36px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 10px rgba(0,200,255,0.5);
+}
+.tl-time {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.tl-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--heading);
+  margin-bottom: 8px;
+}
+.tl-desc {
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.tl-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.tl-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: rgba(0,200,255,0.08);
+  border: 1px solid rgba(0,200,255,0.15);
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+/* ── ARCH GRID DIAGRAM SIZE ── */
+.arch-grid .diagram-body {
+  padding: 20px 16px 28px !important;
+  min-height: 520px;
+}
+.arch-grid .mermaid {
+  width: 100%;
+}
+.arch-grid .mermaid svg {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* ── RISK TABLE ── */
+.risk-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin: 28px 0;
+}
+.risk-card {
+  background: var(--surface);
+  border: 1px solid rgba(255,77,106,0.2);
+  border-top: 3px solid var(--red);
+  border-radius: 10px;
+  padding: 20px;
+}
+.risk-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--red);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.risk-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--heading);
+  margin-bottom: 6px;
+}
+.risk-desc { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+/* ── SOLVED CARDS ── */
+.solved-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 20px;
+}
+.solved-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--green);
+  border-radius: 0 8px 8px 0;
+  padding: 16px 18px;
+}
+.solved-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--green);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.solved-title { font-size: 13.5px; font-weight: 600; color: var(--heading); margin-bottom: 4px; }
+.solved-desc  { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+/* ── DIVIDER ── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* ── FOOTER ── */
+footer {
+  text-align: center;
+  padding: 48px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  border-top: 1px solid var(--border);
+}
+footer a { color: var(--accent); text-decoration: none; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.7s ease both; }
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.5s; }
+
+@media (max-width: 900px) {
+  .arch-grid { grid-template-columns: 1fr !important; }
+  .io-grid   { grid-template-columns: 1fr !important; }
+  .io-arrow  { display: none !important; }
+}
+@media (max-width: 768px) {
+  section { padding: 48px 24px 36px; }
+  .impact-section { padding: 48px 24px 36px; }
+  .hero-inner { padding: 0 24px; }
+  .hero-title { white-space: normal; font-size: clamp(40px, 12vw, 80px); }
+  .hero-sub { white-space: normal; font-size: 14px; }
+  .big-stats { grid-template-columns: 1fr 1fr; }
+  .wins-grid { grid-template-columns: 1fr; }
+  .risk-row  { grid-template-columns: 1fr; }
+  .solved-row { grid-template-columns: 1fr; }
+  .hero-stats { gap: 24px; flex-wrap: wrap; }
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  .impact-section { padding: 80px 24px; }
+}
+/* ── WORKFLOW SEQUENCE DIAGRAM — brighter + larger text ── */
+#workflow .mermaid svg text { fill: #f0f6ff !important; font-size: 15px !important; }
+#workflow .mermaid svg .actor { fill: #0f2340 !important; stroke: #3a70c0 !important; }
+#workflow .mermaid svg .actor text { fill: #ffffff !important; font-size: 15px !important; font-weight: 600 !important; }
+#workflow .mermaid svg .note text { fill: #f0f6ff !important; font-size: 14px !important; }
+#workflow .mermaid svg line.actor-line { stroke: #3a70c0 !important; }
+#workflow .mermaid svg .messageLine0,
+#workflow .mermaid svg .messageLine1 { stroke: #5a9fd4 !important; stroke-width: 1.5px !important; }
+#workflow .mermaid svg [class*="arrow"] { fill: #5a9fd4 !important; stroke: #5a9fd4 !important; }
+/* ── MERMAID ERD TEXT OVERRIDES — force bright text in all attribute cells ── */
+.mermaid svg .er.attributeBoxEven text,
+.mermaid svg .er.attributeBoxOdd text,
+.mermaid svg .er.entityBox ~ text,
+.mermaid svg text.er { fill: #f0f6ff !important; }
+
+/* Description column (3rd cell) — "NEW: …" annotations */
+.mermaid svg .er.attributeBoxEven:last-child text,
+.mermaid svg .er.attributeBoxOdd:last-child text { fill: #f0f6ff !important; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo">AIDLC // AUTOPILOT HARNESS</div>
+  <ul class="nav-links">
+    <li><a href="#boundary">The Boundary</a></li>
+    <li><a href="#pipeline">Pipeline</a></li>
+    <li><a href="#stages">Stages</a></li>
+    <li><a href="#gates">Gates</a></li>
+    <li><a href="#hardening">Hardening</a></li>
+    <li><a href="#impact">Impact</a></li>
+    <li><a href="#references">References</a></li>
+  </ul>
+</nav>
+
+<!-- ══════════════════ HERO ══════════════════ -->
+<div class="hero-section">
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow fade-up">AI Development Life Cycle · Agent Harness</div>
+    <h1 class="hero-title fade-up delay-1">
+      AIDLC <span class="accent">AUTOPILOT</span> <span class="accent2">HARNESS</span>
+    </h1>
+    <p class="hero-sub fade-up delay-2">
+      An end-to-end SDLC harness that drives a requirement from plan to merged PR through eight coordinating agents — where the review gates are <strong>executable code, not prompt instructions</strong>.<br>
+      The design question throughout: which guarantees does a machine actually check, and which did we merely ask an agent to honor?
+    </p>
+    <div class="hero-stats fade-up delay-3">
+      <div class="hero-stat">
+        <span class="num">8</span>
+        <span class="label">COORDINATING AGENTS</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">14</span>
+        <span class="label">FAIL-CLOSED GATES</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">3</span>
+        <span class="label">BOUNDED LOOPS</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">0</span>
+        <span class="label">UNBOUND MERGES</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════════ THE BOUNDARY ══════════════════ -->
+<section id="boundary">
+  <div class="sec-header">
+    <div class="sec-tag">The Core Idea</div>
+    <h2 class="sec-title">PROSE VS. ENFORCEMENT</h2>
+    <p class="sec-desc">
+      The harness is two different kinds of thing, and the boundary between them is the most important fact about it. Four phases are <strong>prose</strong> — markdown skills a language model reads and is asked to follow. One phase is <strong>code</strong> — a JavaScript workflow that validates schemas, SHAs, sizes and merge conditions mechanically.
+    </p>
+  </div>
+
+  <div class="diagram-frame">
+    <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">phase topology — prose half vs code half</span></div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart TD
+    subgraph PROSE["PROSE — skills a model reads and is asked to follow"]
+        direction LR
+        A["A · Plan"] --> B["B · Decompose"]
+        B --> C["C · Red-team<br/>the plan, not the code"]
+        C --> D["D · Checkpoint<br/>human gate"]
+    end
+    E1["E · Execute — CODE<br/>the JS workflow checks this one"]
+    C -.->|"revise"| A
+    C -.->|"revise"| B
+    D --> E1
+    E1 --> F(["F · Complete<br/>merged and human-gated PRs"])
+      </div>
+    </div>
+  </div>
+
+  <div class="wins-grid" style="margin-top:40px;">
+    <div class="win-card">
+      <div class="win-category">Why it matters</div>
+      <ul class="win-items">
+        <li>A guarantee in the prose half is one an agent was <strong>asked</strong> to honor. A guarantee in the code half is one the JS <strong>checks</strong>.</li>
+        <li>Every serious defect found while building this was a place where the first kind had been mistaken for the second.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Consequence for design</div>
+      <ul class="win-items">
+        <li>Anything load-bearing migrates from prompt text into a schema, a comparison, or a gate reason.</li>
+        <li>Prompts still matter — they shape judgment. They just stop being where correctness lives.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">The checkpoint, precisely</div>
+      <ul class="win-items">
+        <li><code>D · Checkpoint</code> is <strong>once per run</strong>, not once per PR — it gates whether execution starts at all.</li>
+        <li>Whether an individual PR merges without a human is decided far later, by the merge gate in stage C.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════════ PIPELINE ══════════════════ -->
+<section id="pipeline" style="max-width:100%;padding-left:32px;padding-right:32px;">
+  <div class="sec-header">
+    <div class="sec-tag">Execution Topology</div>
+    <h2 class="sec-title">ADMIT · BUILD · MERGE</h2>
+    <p class="sec-desc">
+      The code half is three blocks in sequence. Everything read-only happens in <strong>A</strong>, so a run that stops there has mutated nothing — which is what makes a dry run trustworthy rather than merely well-intentioned. <strong>B</strong> is a pipeline with no barrier between stages, so one item can be in red team while another is still being implemented. <strong>C</strong> is deliberately serialized: one PR at a time.
+    </p>
+  </div>
+
+  <div class="diagram-frame">
+    <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">execute — three blocks, every loop bounded</span></div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart TD
+    subgraph A["A · ADMISSION — read-only, nothing mutated yet"]
+        direction TB
+        subgraph AR1[" "]
+            direction LR
+            A1["A1 · Preflight<br/>reconciliation"] --> A2["A2 · Discovery<br/>ready descendants"] --> A3["A3 · Quality bar<br/>criteria + confidence"]
+        end
+        subgraph AR2[" "]
+            direction LR
+            A4["A4 · Membership<br/>verification"] --> A5["A5 · Test-command<br/>allowlist"]
+        end
+        A3 --> A4
+    end
+
+    subgraph B["B · PER ITEM — pipeline, no barrier between stages"]
+        direction TB
+        subgraph BR1[" "]
+            direction LR
+            B1["B1 · Implement<br/>worktree, commits, PR"] --> B2["B2 · Review"] --> B3["B3 · Fix loop"]
+            B3 -.->|"re-review, ≤3"| B2
+        end
+        subgraph BR2[" "]
+            direction LR
+            B4["B4 · Peer review"] --> B5["B5 · Red team"] --> B6["B6 · Peer once<br/>if the head moved"]
+            B5 -.->|"re-attack, ≤3"| B5
+        end
+        B3 --> B4
+    end
+
+    subgraph C["C · MERGE — serialized, one PR at a time"]
+        direction TB
+        subgraph CR1[" "]
+            direction LR
+            C1["C1 · Freshness"] --> C2["C2 · Gate decision<br/>pure JS, no agent"] --> C3["C3 · Read CI"]
+        end
+        subgraph CR2[" "]
+            direction LR
+            C4{"auto-<br/>mergeable?"} -->|yes| C5["C5 · Merge,<br/>close tasks"]
+        end
+        C3 --> C4
+    end
+
+    START(["harness invoked"]) --> A1
+    A5 --> DRY{"dry run?"}
+    DRY -->|yes| PROOF(["proof gate<br/>no mutations"])
+    DRY -->|no| B1
+    B6 --> C1
+    C5 --> FIN(["reconcile and drain"])
+    A -.-> HUM
+    C4 -.->|no| HUM(["needs human<br/>PR left open, flagged"])
+
+    style AR1 fill:none,stroke:none
+    style AR2 fill:none,stroke:none
+    style BR1 fill:none,stroke:none
+    style BR2 fill:none,stroke:none
+    style CR1 fill:none,stroke:none
+    style CR2 fill:none,stroke:none
+      </div>
+    </div>
+  </div>
+
+  <div class="solved-row" style="grid-template-columns:1fr 1fr 1fr;margin-top:36px;">
+    <div class="solved-card">
+      <div class="solved-label">Bound 01</div>
+      <div class="solved-title">4 items per run</div>
+      <div class="solved-desc">Work is discovered in full, then capped as whole groups — never a partial group, because a half-executed epic is worse than an unstarted one.</div>
+    </div>
+    <div class="solved-card">
+      <div class="solved-label">Bound 02</div>
+      <div class="solved-title">3 fix attempts</div>
+      <div class="solved-desc">Each is a fix plus an <em>independent</em> re-review, never the fixer self-reporting clean. Exhausting them routes to a human.</div>
+    </div>
+    <div class="solved-card">
+      <div class="solved-label">Bound 03</div>
+      <div class="solved-title">3 red-team rounds</div>
+      <div class="solved-desc">Measures whether the defect surface <em>converges</em>, not whether it is empty. Round 2 finding what round 1 missed is the real signal.</div>
+    </div>
+  </div>
+
+  <div class="win-card" style="margin-top:28px;">
+    <div class="win-category">The rule that ties them together</div>
+    <ul class="win-items">
+      <li><strong>Running out of attempts is itself the signal for a human — never a reason to merge.</strong></li>
+      <li>Every dotted exit is fail-closed: the run stops and reports rather than guessing at intent.</li>
+    </ul>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════════ STAGES ══════════════════ -->
+<section id="stages" style="max-width:100%;padding-left:32px;padding-right:32px;">
+  <div class="sec-header">
+    <div class="sec-tag">Deep Dive</div>
+    <h2 class="sec-title">THREE LOOPS THAT MATTER</h2>
+    <p class="sec-desc">
+      Most of the harness is plumbing. Three components carry the actual safety properties, and each one exists in its current shape because a simpler version failed in production.
+    </p>
+  </div>
+
+  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--heading);letter-spacing:2px;margin-bottom:20px;">B3 — THE FIX LOOP, RED FIRST</h3>
+  <div class="diagram-frame">
+    <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">one fix attempt — order is enforced, not suggested</span></div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart LR
+    GO(["one attempt"]) --> R1["1 · Failing test from the<br/>reviewer's scenario, verbatim"]
+    R1 --> R2["2 · RUN IT — confirm it fails<br/>for the STATED reason"]
+    R2 --> R3["3 · Smallest fix, then<br/>the same test passes"]
+    R3 --> R4["4 · Sweep the defect class;<br/>preserve rewritten invariants"]
+    R4 --> RR["Independent re-review"]
+    RR --> BACK(["back to the ladder"])
+      </div>
+    </div>
+  </div>
+  <div class="wins-grid" style="margin-top:24px;">
+    <div class="win-card">
+      <div class="win-category">The failure it prevents</div>
+      <ul class="win-items">
+        <li>A test written in the same pass as the fix, from the same misreading of the defect, <strong>encodes the misreading twice and goes green</strong>.</li>
+        <li>The reviewer's reproducer is the only oracle that comes from outside the fixer's own interpretation.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Made mechanical</div>
+      <ul class="win-items">
+        <li>The fixer must return a reproducer it <em>observed failing before</em> the fix; a missing row becomes a merge-gate reason.</li>
+        <li>What is checked is <strong>absence, not honesty</strong> — no reproducer proves the step was skipped, whatever the agent asserts.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--heading);letter-spacing:2px;margin:44px 0 20px;">B5 — RED TEAM, CONVERGENCE NOT CLEANLINESS</h3>
+  <div class="diagram-frame">
+    <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">one attack round of three</span></div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart LR
+    S(["peer-approved head"]) --> R["Five lenses, REFUTE mode<br/>one coverage row each"]
+    R --> AUD["Audit every prior finding id:<br/>fixed / not-fixed / moved"]
+    AUD --> DIV{"new<br/>finding id?"}
+    DIV -->|yes| MARK["diverged = true"]
+    DIV -->|no| SEV{"open critical<br/>or high?"}
+    MARK --> SEV
+    SEV -->|"yes, rounds left"| FX["Fix, then re-attack<br/>the NEW head"]
+    FX --> BACK(["round N+1"])
+    SEV -->|"no, or cap reached"| OUT(["converged"])
+      </div>
+    </div>
+  </div>
+  <div class="wins-grid" style="margin-top:24px;">
+    <div class="win-card">
+      <div class="win-category">Counterintuitive by design</div>
+      <ul class="win-items">
+        <li>Red-team <em>findings</em> never block a merge, at any severity — they become tracked issues and the PR ships.</li>
+        <li>What blocks is <strong>divergence</strong>: a defect surface that grows under repeated attack is one nobody has bottomed out.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Coverage as evidence</div>
+      <ul class="win-items">
+        <li>One agent covering five lenses can silently blur or skip one, and a per-finding label cannot detect that.</li>
+        <li>So each lens must return a coverage row — "ran and clean" and "never ran" must not look identical.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--heading);letter-spacing:2px;margin:44px 0 20px;">C — THE MERGE GATE, PURE JS</h3>
+  <div class="diagram-frame">
+    <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">four sub-stages, no agent in the decision</span></div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart LR
+    F["C1 · Freshness<br/>still the PR that was reviewed?"] --> D["C2 · Decide<br/>pure JS, no agent"]
+    D --> V["C3 · Verify on this<br/>exact SHA + read CI"]
+    V --> M["C4 · Merge, close tasks,<br/>run integration test"]
+    F -.->|"conflict / drift"| H(["human"])
+    D -.->|"any blocking reason"| H
+      </div>
+    </div>
+  </div>
+  <div class="win-card" style="margin-top:24px;">
+    <div class="win-category">Why the decision has no agent in it</div>
+    <ul class="win-items">
+      <li>Size, risk and reviewability are computed from the mechanical diff — never from a review agent's prose summary of it.</li>
+      <li>An agent can be persuaded by a well-written PR description. A line count cannot.</li>
+    </ul>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════════ GATES ══════════════════ -->
+<section id="gates">
+  <div class="sec-header">
+    <div class="sec-tag">Merge Policy</div>
+    <h2 class="sec-title">WHEN A HUMAN IS ASKED</h2>
+    <p class="sec-desc">
+      An empty reason list means the PR merges with no human at all — the normal outcome for a clean change. Everything below is a statement about <strong>evidence we do not have</strong>, not about defects we do.
+    </p>
+  </div>
+
+  <div class="risk-row">
+    <div class="risk-card">
+      <div class="risk-label">Class 01</div>
+      <div class="risk-title">Evidence integrity</div>
+      <div class="risk-desc">A review artifact missing, unbound, stale or shallow. An unproven capability claim. A weak test oracle. CI unreadable for the gated commit. Isolation unproven with no green CI to substitute.</div>
+    </div>
+    <div class="risk-card">
+      <div class="risk-label">Class 02</div>
+      <div class="risk-title">Impact and reviewability</div>
+      <div class="risk-desc">Over 1,000 production changed lines. A risk-area path or content match. A safety control deleted from production code. Model routing unproven, so two reviewers may be the same model.</div>
+    </div>
+    <div class="risk-card">
+      <div class="risk-label">Class 03</div>
+      <div class="risk-title">Decisions, not defects</div>
+      <div class="risk-desc">A finding marked <code>ask-user</code> — it challenges deliberate intent or changes product behavior. Blocks at <em>any</em> severity, because the question is who may resolve it, not how bad it is.</div>
+    </div>
+  </div>
+
+  <div class="wins-grid" style="margin-top:36px;">
+    <div class="win-card">
+      <div class="win-category">The distinction people get backwards</div>
+      <ul class="win-items">
+        <li><strong>Red-team findings do not block.</strong> A defect that is written down and owned is not a reason to stall a PR.</li>
+        <li><strong>Review verdicts do block.</strong> A rejected review is not a defect list — it is a reviewer saying it could not establish the change is correct.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Why that asymmetry is right</div>
+      <ul class="win-items">
+        <li>Tracking a known bug converts it into scheduled work; that is progress.</li>
+        <li>Merging on "we could not verify this" converts uncertainty into <em>"we shipped it, see ticket"</em>. That is not.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Two independent axes</div>
+      <ul class="win-items">
+        <li><code>action</code> routes a finding; <code>severity</code> ranks it. Neither is derivable from the other.</li>
+        <li>A low-severity finding can need a human decision; a high-severity one can be cleanly auto-fixable.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════════ HARDENING ══════════════════ -->
+<section id="hardening" style="max-width:100%;padding-left:32px;padding-right:32px;">
+  <div class="sec-header">
+    <div class="sec-tag">Failure Modes Found and Fixed</div>
+    <h2 class="sec-title">WHAT ACTUALLY BROKE</h2>
+    <p class="sec-desc">
+      Each of these was a confidently-worded guarantee that did not hold. They are the reason the harness looks the way it does, and every one is now pinned by a test that fails if the fix is reverted.
+    </p>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-time">Defect 01</div>
+      <div class="tl-title">A check that passed vacuously</div>
+      <div class="tl-desc">Reviews are bound to a commit SHA, and the gate compared the artifact's SHA to an independently-read one. But the comparison was guarded by <code>if (expected &amp;&amp; ...)</code> — so when the independent read <em>failed</em>, the check silently passed. The guarantee evaporated in exactly the situation it existed for. Now a missing expected value is a blocking reason, not a skipped comparison.</div>
+      <div class="tl-tags"><span class="tl-tag">fail-open</span><span class="tl-tag">SHA binding</span><span class="tl-tag">mutation-pinned</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">Defect 02</div>
+      <div class="tl-title">Two Opus reviews, one discarded</div>
+      <div class="tl-desc">The red-team loop re-ran a full peer review after every attack round that fixed something. Nothing in the loop read that verdict, and each round overwrote the last — so on a three-round PR, two expensive reviews were produced and thrown away. Hoisted to a single review after the loop, on the final commit. Identical coverage, since it reviews the whole diff rather than an increment.</div>
+      <div class="tl-tags"><span class="tl-tag">wasted compute</span><span class="tl-tag">loop hygiene</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">Defect 03</div>
+      <div class="tl-title">A rule that fought its own detector</div>
+      <div class="tl-desc">Divergence was detected by hashing <code>severity|file|summary</code>. Meanwhile the prompt <em>required</em> re-reporting an unfixed finding "at the same or higher severity" — which changed the hash, registered as a brand-new defect, and sent a correctly-behaving run to a human. Following the instruction guaranteed a false alarm. Now keyed on a stable finding id.</div>
+      <div class="tl-tags"><span class="tl-tag">false positive</span><span class="tl-tag">prompt vs code</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">Defect 04</div>
+      <div class="tl-title">One threshold, four copies, two stale</div>
+      <div class="tl-desc">The reviewability limit lived as prose in four files. Two still carried a superseded 400/800 pair. The costly one instructed the <em>decomposer</em> to target the old limit — so it split work into more PRs than the gate required, and every extra PR paid a full review, peer and red-team cycle. Reconciled, with a shared reference as the single owner.</div>
+      <div class="tl-tags"><span class="tl-tag">doc drift</span><span class="tl-tag">real cost</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">Defect 05</div>
+      <div class="tl-title">Fixes that closed nothing</div>
+      <div class="tl-desc">A remediation round reported six findings closed; the next review round found all six still live, plus new defects the fixes had introduced. Root cause was structural, not a capability limit: the same agent wrote the fix and the test that was supposed to prove it, from one shared misreading. The countermeasure is ordering — the reviewer's reproducer becomes a failing test <em>first</em>.</div>
+      <div class="tl-tags"><span class="tl-tag">weak oracle</span><span class="tl-tag">shared mental model</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">Method</div>
+      <div class="tl-title">Every gate is mutation-tested</div>
+      <div class="tl-desc">A passing test proves nothing until you have seen it fail. So each gate is verified by reverting the enforcing line and confirming a <em>named</em> assertion goes red. One refinement earned the hard way: check <strong>which</strong> assertion went red — a mutation that breaks a cache key so nothing is ever stored kills the reuse test while leaving the correctness test untouched, and the correctness test is the one that matters.</div>
+      <div class="tl-tags"><span class="tl-tag">mutation testing</span><span class="tl-tag">test the test</span></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════════ IMPACT ══════════════════ -->
+<div class="impact-section" id="impact">
+  <div class="impact-inner">
+    <div class="sec-header">
+      <div class="sec-tag">Outcomes</div>
+      <h2 class="sec-title">MEASURED, NOT ESTIMATED</h2>
+      <p class="sec-desc">
+        Every number here is something the code demonstrates or a test enforces. Token-cost claims are deliberately absent — per-phase accounting has not been instrumented, so any percentage would be a guess dressed as a metric.
+      </p>
+    </div>
+
+    <div class="big-stats">
+      <div class="big-stat">
+        <span class="num">33 → 4</span>
+        <span class="label">TOOL CALLS PER DIFF READ</span>
+      </div>
+      <div class="big-stat">
+        <span class="num">2 → 1</span>
+        <span class="label">PEER REVIEWS PER FIXED PR</span>
+      </div>
+      <div class="big-stat">
+        <span class="num">14</span>
+        <span class="label">BLOCKING REASONS, ALL EXPLICIT</span>
+      </div>
+      <div class="big-stat">
+        <span class="num">100%</span>
+        <span class="label">GATES MUTATION-VERIFIED</span>
+      </div>
+    </div>
+
+    <div class="wins-grid" style="margin-top:44px;">
+      <div class="win-card">
+        <div class="win-category">Correctness</div>
+        <ul class="win-items">
+          <li>An unbound or stale review can no longer reach a merge — the binding is re-asserted at every phase boundary.</li>
+          <li>An unclassified finding fails closed to "needs a human" rather than being swept into an automated fix.</li>
+        </ul>
+      </div>
+      <div class="win-card">
+        <div class="win-category">Cost</div>
+        <ul class="win-items">
+          <li>The diff read went from one command per changed file to one for the whole range — same bytes, a fraction of the turns.</li>
+          <li>Memoized on the commit SHA, so a fix round that legitimately changes nothing stops paying for an identical re-read.</li>
+        </ul>
+      </div>
+      <div class="win-card">
+        <div class="win-category">Throughput</div>
+        <ul class="win-items">
+          <li>Findings became tracked work instead of merge blockers, which removed the stall the loop existed to drain.</li>
+          <li>Oversized groupings are now predicted at the checkpoint, where splitting is free — not at the gate, after the work is done.</li>
+        </ul>
+      </div>
+      <div class="win-card">
+        <div class="win-category">Maintainability</div>
+        <ul class="win-items">
+          <li>Shared references own each rule once; four callers point at them and none restate them.</li>
+          <li>An install script verifies frontmatter, references, parse and the offline suite after every update.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="win-card" style="margin-top:32px;">
+      <div class="win-category">The transferable lesson</div>
+      <ul class="win-items">
+        <li>Agent reliability is an <strong>architecture</strong> problem, not a prompt-quality problem. The wins came from moving guarantees into code, not from better wording.</li>
+        <li>The recurring bug shape was always the same: a constraint stated in a prompt and trusted by the code around it.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════════ REFERENCES ══════════════════ -->
+<section id="references" style="padding:48px 60px 40px;max-width:100%;">
+  <div class="sec-header">
+    <div class="sec-tag">References</div>
+    <h2 class="sec-title">DESIGN NOTES</h2>
+  </div>
+  <div class="wins-grid">
+    <div class="win-card">
+      <div class="win-category">Architecture</div>
+      <ul class="win-items">
+        <li>Eight coordinating skills — one orchestrator plus seven phase agents — over a JavaScript workflow that owns every gate decision.</li>
+        <li>Model tiers are pinned by the workflow, never self-reported by an agent, so reviewer independence is verifiable rather than claimed.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Documentation</div>
+      <ul class="win-items">
+        <li>The workflow reference states its own precedence: the script is the source of truth, and a diagram that disagrees with it is the bug.</li>
+        <li>Known gaps are documented as gaps — including which guarantees are enforced only by prompt.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Verification</div>
+      <ul class="win-items">
+        <li>The regression suite drives the real workflow against stubbed agents, exercising control flow rather than mocking it.</li>
+        <li>Fully offline — no API calls, no network — so the gates can be tested without spending a token.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>AIDLC · Autopilot Harness — Chintamani Lonkar</div>
+  <div style="margin-top:8px;color:var(--muted);font-size:13px;">Agent reliability as an architecture problem</div>
+</footer>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#0f2340',
+    primaryTextColor: '#f0f6ff',
+    primaryBorderColor: '#2e5fa3',
+    lineColor: '#4a90d9',
+    secondaryColor: '#053a22',
+    tertiaryColor: '#1a1040',
+    background: '#0d1420',
+    mainBkg: '#0d1420',
+    nodeBorder: '#2e5fa3',
+    clusterBkg: '#060910',
+    clusterBorder: '#3669ac',
+    titleColor: '#f0f6ff',
+    edgeLabelBackground: '#0d1420',
+    actorBkg: '#0f2340',
+    actorBorder: '#2e5fa3',
+    actorTextColor: '#f0f6ff',
+    signalColor: '#6a9bbf',
+    labelBoxBkgColor: '#0d1420',
+    labelBoxBorderColor: '#2e5fa3',
+    labelTextColor: '#f0f6ff',
+    noteBkgColor: '#100e0a',
+    noteTextColor: '#f0f6ff',
+    attributeBackgroundColorOdd: '#0d1928',
+    attributeBackgroundColorEven: '#0a1520',
+    fontFamily: 'DM Mono, monospace',
+    fontSize: '13px',
+  },
+  er: {
+    diagramPadding: 24,
+    layoutDirection: 'TB',
+    minEntityWidth: 120,
+    minEntityHeight: 80,
+    entityPadding: 16,
+    useMaxWidth: true,
+  },
+  flowchart: {
+    htmlLabels: true,
+    curve: 'basis',
+    padding: 20,
+    useMaxWidth: true,
+  }
+});
+
+// Scroll-based fade-in for sections
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('section, .impact-section').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
