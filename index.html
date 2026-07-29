@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AIDLC Autopilot Harness — Agent Reliability as an Architecture Problem</title>
 <meta name="description" content="An end-to-end AI development life cycle harness: eight coordinating agents driving a requirement from plan to merged PR, with review gates enforced in code rather than prompts.">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
@@ -666,18 +666,14 @@ footer a { color: var(--accent); text-decoration: none; }
     <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">phase topology — prose half vs code half</span></div>
     <div class="diagram-body">
       <div class="mermaid">
-flowchart TD
+flowchart LR
     subgraph PROSE["PROSE — skills a model reads and is asked to follow"]
-        direction LR
-        A["A · Plan"] --> B["B · Decompose"]
-        B --> C["C · Red-team<br/>the plan, not the code"]
-        C --> D["D · Checkpoint<br/>human gate"]
+        A["A · Plan"] --> B["B · Decompose"] --> C["C · Red-team<br/>the plan, not the code"] --> D["D · Checkpoint<br/>human gate"]
     end
-    E1["E · Execute — CODE<br/>the JS workflow checks this one"]
+    D --> E1["E · Execute — CODE<br/>the JS workflow checks this one"]
+    E1 --> F(["F · Complete<br/>merged and<br/>human-gated PRs"])
     C -.->|"revise"| A
     C -.->|"revise"| B
-    D --> E1
-    E1 --> F(["F · Complete<br/>merged and human-gated PRs"])
       </div>
     </div>
   </div>
@@ -724,62 +720,40 @@ flowchart TD
     <div class="diagram-body">
       <div class="mermaid">
 flowchart TD
-    subgraph A["A · ADMISSION — read-only, nothing mutated yet"]
-        direction TB
-        subgraph AR1[" "]
-            direction LR
-            A1["A1 · Preflight<br/>reconciliation"] --> A2["A2 · Discovery<br/>ready descendants"] --> A3["A3 · Quality bar<br/>criteria + confidence"]
-        end
-        subgraph AR2[" "]
-            direction LR
-            A4["A4 · Membership<br/>verification"] --> A5["A5 · Test-command<br/>allowlist"]
-        end
-        A3 --> A4
-    end
-
-    subgraph B["B · PER ITEM — pipeline, no barrier between stages"]
-        direction TB
-        subgraph BR1[" "]
-            direction LR
-            B1["B1 · Implement<br/>worktree, commits, PR"] --> B2["B2 · Review"] --> B3["B3 · Fix loop"]
-            B3 -.->|"re-review, ≤3"| B2
-        end
-        subgraph BR2[" "]
-            direction LR
-            B4["B4 · Peer review"] --> B5["B5 · Red team"] --> B6["B6 · Peer once<br/>if the head moved"]
-            B5 -.->|"re-attack, ≤3"| B5
-        end
-        B3 --> B4
-    end
-
-    subgraph C["C · MERGE — serialized, one PR at a time"]
-        direction TB
-        subgraph CR1[" "]
-            direction LR
-            C1["C1 · Freshness"] --> C2["C2 · Gate decision<br/>pure JS, no agent"] --> C3["C3 · Read CI"]
-        end
-        subgraph CR2[" "]
-            direction LR
-            C4{"auto-<br/>mergeable?"} -->|yes| C5["C5 · Merge,<br/>close tasks"]
-        end
-        C3 --> C4
-    end
-
     START(["harness invoked"]) --> A1
+
+    subgraph A["A · ADMISSION — read-only, nothing mutated yet"]
+        direction LR
+        A1["A1 · Preflight<br/>reconciliation"] --> A2["A2 · Discovery"] --> A3["A3 · Quality bar"] --> A4["A4 · Membership"] --> A5["A5 · Allowlist"]
+    end
+
     A5 --> DRY{"dry run?"}
     DRY -->|yes| PROOF(["proof gate<br/>no mutations"])
     DRY -->|no| B1
+
+    subgraph B1G["B · PER ITEM — build and review"]
+        direction LR
+        B1["B1 · Implement<br/>worktree, PR"] --> B2["B2 · Review"] --> B3["B3 · Fix loop"]
+        B3 -.->|"re-review, ≤3"| B2
+    end
+
+    subgraph B2G["B · PER ITEM — adversarial"]
+        direction LR
+        B4["B4 · Peer review"] --> B5["B5 · Red team"] --> B6["B6 · Peer once<br/>if head moved"]
+        B5 -.->|"re-attack, ≤3"| B5
+    end
+
+    B3 --> B4
+
+    subgraph C["C · MERGE — serialized, one PR at a time"]
+        direction LR
+        C1["C1 · Freshness"] --> C2["C2 · Gate decision<br/>pure JS"] --> C3["C3 · Read CI"] --> C4{"auto-<br/>mergeable?"} -->|yes| C5["C5 · Merge,<br/>close tasks"]
+    end
+
     B6 --> C1
     C5 --> FIN(["reconcile and drain"])
     A -.-> HUM
     C4 -.->|no| HUM(["needs human<br/>PR left open, flagged"])
-
-    style AR1 fill:none,stroke:none
-    style AR2 fill:none,stroke:none
-    style BR1 fill:none,stroke:none
-    style BR2 fill:none,stroke:none
-    style CR1 fill:none,stroke:none
-    style CR2 fill:none,stroke:none
       </div>
     </div>
   </div>
