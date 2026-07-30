@@ -615,6 +615,7 @@ footer a { color: var(--accent); text-decoration: none; }
     <li><a href="#pipeline">Pipeline</a></li>
     <li><a href="#stages">Stages</a></li>
     <li><a href="#gates">Gates</a></li>
+    <li><a href="#evidence">Evidence</a></li>
     <li><a href="#hardening">Hardening</a></li>
     <li><a href="#impact">Impact</a></li>
     <li><a href="#references">References</a></li>
@@ -709,6 +710,47 @@ flowchart TD
       </ul>
     </div>
   </div>
+
+  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--heading);letter-spacing:2px;margin:44px 0 20px;">THE SAME BOUNDARY, INSIDE A SINGLE FIX</h3>
+  <div class="diagram-frame">
+    <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">two paths to a fix — same rules, only one enforced</span></div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart TD
+    subgraph FP1[" "]
+        direction LR
+        FIND(["a finding exists"]) --> WHERE{"born inside<br/>the workflow?"}
+        WHERE -->|yes| B3F["B3 · fix loop<br/>inside the JS workflow"]
+        WHERE -->|"no — PR comment, red-team<br/>report, pasted list"| REM["ap-remediate<br/>hand-driven session"]
+    end
+    subgraph FP2[" "]
+        direction LR
+        MECH["ENFORCED — a fix without a reproducer<br/>row becomes a merge-gate reason"] --> RR(["independent re-review"])
+        PROMPT["NOT enforced — prompt discipline only;<br/>nothing checks red-first happened"] --> AUD(["closure claims audited<br/>by the next review round"])
+    end
+    B3F --> MECH
+    REM --> PROMPT
+    style FP1 fill:none,stroke:none
+    style FP2 fill:none,stroke:none
+      </div>
+    </div>
+  </div>
+  <div class="wins-grid" style="grid-template-columns:1fr 1fr;margin-top:24px;">
+    <div class="win-card">
+      <div class="win-category">Same rules, different guarantees</div>
+      <ul class="win-items">
+        <li>Both paths read the <strong>same</strong> fix-discipline reference — the rules are identical. Only the workflow path can <strong>prove</strong> they were followed.</li>
+        <li>A hand-driven session that narrates the red-first step without doing it produces exactly the fix the enforcement exists to catch.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">What to do about the weak path</div>
+      <ul class="win-items">
+        <li>Treat a hand-driven session's closure claims as <strong>claims</strong> — the next review round audits them against the remediation contract instead of trusting the narration.</li>
+        <li>This asymmetry is the site's core idea in miniature: identical prose, and correctness lives only where the code checks it.</li>
+      </ul>
+    </div>
+  </div>
 </section>
 
 <hr class="divider">
@@ -737,7 +779,10 @@ flowchart TD
 
     A5 --> DRY{"dry run?"}
     DRY -->|yes| PROOF(["proof gate<br/>no mutations"])
-    DRY -->|no| B1
+    DRY -->|no| GUARD{"routing + isolation<br/>proven?"}
+    GUARD -->|yes| B1
+    GUARD -->|"isolation<br/>unproven"| DEG["DEGRADED mode<br/>host tests withheld,<br/>auto-merge off"]
+    DEG --> B1
 
     subgraph B1G["B · PER ITEM — build and review"]
         direction LR
@@ -761,6 +806,7 @@ flowchart TD
     B6 --> C1
     C5 --> FIN(["reconcile and drain"])
     A -.-> HUM
+    GUARD -.->|"routing unproven"| HUM
     C4 -.->|no| HUM(["needs human<br/>PR left open, flagged"])
       </div>
     </div>
@@ -789,7 +835,21 @@ flowchart TD
     <ul class="win-items">
       <li><strong>Running out of attempts is itself the signal for a human — never a reason to merge.</strong></li>
       <li>Every dotted exit is fail-closed: the run stops and reports rather than guessing at intent.</li>
+      <li>The guard between A and B is asymmetric on purpose: <strong>unproven model routing stops the run</strong> (two reviewers might be the same model), while <strong>unproven isolation only degrades it</strong> — the build proceeds, but host test dispatches are withheld and nothing auto-merges.</li>
     </ul>
+  </div>
+
+  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--heading);letter-spacing:2px;margin:44px 0 20px;">WHO RUNS WHAT — TIERS PINNED BY THE WORKFLOW</h3>
+  <div class="code-block">
+<span class="c">// model routing — assigned by the workflow, never self-reported by an agent,</span><br>
+<span class="c">// so reviewer independence is verifiable rather than claimed</span><br><br>
+<span class="k">MECHANICAL_MODEL</span>&nbsp;&nbsp;<span class="d">haiku</span>&nbsp;&nbsp;&nbsp;<span class="com">reconciliation · discovery · diff reads · CI read · merge mechanics · issue filing</span><br>
+<span class="k">EXECUTOR_MODEL</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="d">sonnet</span>&nbsp;&nbsp;<span class="com">implementation · the fixer</span><br>
+<span class="k">REVIEW_MODEL</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="d">sonnet</span>&nbsp;&nbsp;<span class="com">security + code review</span><br>
+<span class="k">PEER_MODEL</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="d">opus</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="com">peer review · red team — the adversarial tier</span><br><br>
+<span class="c">// executor and peer MUST resolve to different model IDs or the run stops —</span><br>
+<span class="c">// unless a human passes <span class="n">allowSingleTier</span> with a written acceptance.</span><br>
+<span class="c">// And then nothing auto-merges: the waiver buys execution, never the merge.</span>
   </div>
 </section>
 
@@ -961,6 +1021,123 @@ flowchart LR
       </ul>
     </div>
   </div>
+
+  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--heading);letter-spacing:2px;margin:44px 0 20px;">THE SIZE GATE — TWO COUNTERS, ONE BLOCKS</h3>
+  <div class="wins-grid">
+    <div class="win-card">
+      <div class="win-category">Production lines block at 1,000</div>
+      <ul class="win-items">
+        <li>Additions <strong>plus</strong> deletions, never net. More production code is more places to be wrong — that is <strong>risk</strong>, so it is a hard limit.</li>
+        <li>Docs, tracker state and CHANGELOG are excluded. Lockfiles, <code>dist/</code> and generated clients deliberately are <strong>not</strong> — they change runtime behavior.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Total lines only advise at 2,500</div>
+      <ul class="win-items">
+        <li>Production + tests measures <strong>reviewer attention</strong> — a capacity concern, and blocking is the wrong answer to "this is a lot to read".</li>
+        <li>Kept as two separate functions so a caller <strong>cannot</strong> concatenate them and promote attention-cost back into a merge blocker.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Tests can never block</div>
+      <ul class="win-items">
+        <li>Test lines are excluded from the blocking count, so <strong>writing more tests never pushes a PR toward a human gate</strong>.</li>
+        <li>The old 400/800 pair did exactly that — perverse in a repo whose contract mandates TDD. On one measured PR, a modest 1.3:1 test ratio blew the old total budget by 464 lines while production was over by only 123.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="solved-row" style="margin-top:20px;">
+    <div class="solved-card">
+      <div class="solved-label">Predicted at the dry run</div>
+      <div class="solved-title">The only structurally-unfixable blocker</div>
+      <div class="solved-desc">A size finding means "this should have been decomposed differently" — a decision made two phases earlier. Discovering it at the merge gate wastes the entire execute → review → peer → red-team spend, so each PR group carries a predicted size, and any group above 12 production files is flagged at the checkpoint, where splitting is free.</div>
+    </div>
+    <div class="solved-card">
+      <div class="solved-label">Files, not lines</div>
+      <div class="solved-title">No fabricated precision</div>
+      <div class="solved-desc">Nothing has been written yet, so a predicted line count would be invented. The threshold is an explicit heuristic; crossing it means "look at this grouping", never "this will fail". And it adds no gate — the dry run already ends at a human, so the prediction only has to be visible. "Unknown" is reported as unknown, not as small.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════════ EVIDENCE ══════════════════ -->
+<section id="evidence" style="max-width:100%;padding-left:32px;padding-right:32px;">
+  <div class="sec-header">
+    <div class="sec-tag">Execution Evidence</div>
+    <h2 class="sec-title">WHAT COUNTS AS PROOF</h2>
+    <p class="sec-desc">
+      Two questions decide whether a change was ever actually <em>executed</em> before it merges: does CI count as evidence, and may anything run on the host? Both answers are mechanical, and both fail closed — but one of them had to stop failing <strong>stuck</strong>.
+    </p>
+  </div>
+
+  <div class="diagram-frame">
+    <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">ciGreen — required checks, and the no-admin fallback</span></div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart LR
+    CG(["ciGreen"]) --> RD{"CI readable for<br/>current head SHA?"}
+    RD -.->|no| NG(["not green —<br/>unknown state"])
+    RD -->|yes| REQ{"any check<br/>marked required?"}
+    REQ -->|yes| ALLR{"all required<br/>checks SUCCESS?"}
+    REQ -->|"no — marking one<br/>needs repo admin"| OBS{"one check ran AND<br/>every one SUCCESS?"}
+    ALLR -->|yes| GRN(["green"])
+    ALLR -.->|no| NG
+    OBS -->|yes| GRN
+    OBS -.->|"no — pending, skipped,<br/>cancelled or zero checks"| NG
+      </div>
+    </div>
+  </div>
+
+  <div class="wins-grid" style="margin-top:24px;">
+    <div class="win-card">
+      <div class="win-category">Fail-closed became fail-stuck</div>
+      <ul class="win-items">
+        <li>Marking a check required needs repository <strong>admin</strong>. With push-only permission that state can <em>never</em> become true — so hard-blocking on it meant every PR human-gated forever, regardless of quality.</li>
+        <li>The fallback is deliberately <strong>stricter</strong> than the required path: with no required set, nothing defines which checks were expected, so anything short of "every observed check green" blocks.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">The hole, closed elsewhere</div>
+      <ul class="win-items">
+        <li>The one thing branch protection uniquely buys is stopping a PR from <strong>disabling its own checks</strong>.</li>
+        <li>Closed independently: any change under <code>.github/</code> is a first-class risk area and can never auto-merge, whatever CI says. That dependency is load-bearing, so a test reddens if it is removed.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Scope limit — read before reusing</div>
+      <ul class="win-items">
+        <li>The fallback was an explicit human decision for <strong>non-production</strong> repositories. It is not a general improvement.</li>
+        <li>Before pointing this at production: restore the hard required-checks rule, or gate the fallback on the resolved repository owner.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--heading);letter-spacing:2px;margin:44px 0 20px;">RUNTIME ISOLATION — THE HONEST CLAIM</h3>
+  <div class="wins-grid">
+    <div class="win-card">
+      <div class="win-category">Mechanically enforced</div>
+      <ul class="win-items">
+        <li>The workflow's <strong>own</strong> dispatches that execute repo-controlled commands — the declared test runner and the post-merge integration test — each carry an explicit isolation guard.</li>
+        <li>In degraded mode neither can fire. No prompt can talk past this.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Requested only — asymmetric by design</div>
+      <ul class="win-items">
+        <li>Code-<strong>writing</strong> stages are asked not to run the suite. <strong>Reviewing</strong> stages are permitted execution under a stated containment posture — because verification requires execution.</li>
+        <li>On one PR the review marked a compatibility claim PROVEN from static reading; the peer REFUTED it by running a probe. Withholding execution from reviewers would have shipped that defect.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Said precisely</div>
+      <ul class="win-items">
+        <li>The honest claim: workflow dispatches <em>cannot</em> fire, writers are <em>asked</em>, reviewers execute <em>under posture</em>. Never "repository-controlled execution is withheld".</li>
+        <li>Closing that gap needs a command broker or a container — not stronger prompt wording. Worktree isolation separates <strong>files</strong>, not credentials or network.</li>
+      </ul>
+    </div>
+  </div>
 </section>
 
 <hr class="divider">
@@ -1013,6 +1190,7 @@ flowchart LR
       <div class="tl-tags"><span class="tl-tag">mutation testing</span><span class="tl-tag">test the test</span></div>
     </div>
   </div>
+
 </section>
 
 <hr class="divider">
@@ -1075,6 +1253,19 @@ flowchart LR
           <li>Shared references own each rule once; four callers point at them and none restate them.</li>
           <li>An install script verifies frontmatter, references, parse and the offline suite after every update.</li>
         </ul>
+      </div>
+    </div>
+
+    <div class="solved-row" style="margin-top:32px;">
+      <div class="solved-card">
+        <div class="solved-label">Deliberately not memoized</div>
+        <div class="solved-title">The final SHA read</div>
+        <div class="solved-desc">Its two merge-phase calls look redundant and are not: the first gates, and the second exists solely to detect drift <em>since</em> that gate, immediately before merging. Caching it would delete a safety check, not save a token.</div>
+      </div>
+      <div class="solved-card">
+        <div class="solved-label">Deliberately not shared</div>
+        <div class="solved-title">The in-memory diff</div>
+        <div class="solved-desc">Handing the workflow's own copy of the diff to all three reviewers is the largest saving available — and not taken, because they would all read one mechanical agent's copy. A subtly wrong copy blinds them identically: opus rates for correlated opinions. Reviewers fetching independently is what lets them fail differently.</div>
       </div>
     </div>
 
