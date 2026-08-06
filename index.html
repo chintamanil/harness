@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AIDLC Autopilot Harness — Agent Reliability as an Architecture Problem</title>
-<meta name="description" content="An end-to-end AI development life cycle harness: eight coordinating agents driving a requirement from plan to merged PR, with review gates enforced in code rather than prompts.">
+<meta name="description" content="An end-to-end AI development life cycle harness: ten coordinating skills driving a requirement from plan to merged PR — and draining an epic unattended overnight — with review gates enforced in code rather than prompts.">
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -616,6 +616,7 @@ footer a { color: var(--accent); text-decoration: none; }
     <li><a href="#stages">Stages</a></li>
     <li><a href="#gates">Gates</a></li>
     <li><a href="#evidence">Evidence</a></li>
+    <li><a href="#unattended">Unattended</a></li>
     <li><a href="#hardening">Hardening</a></li>
     <li><a href="#impact">Impact</a></li>
     <li><a href="#references">References</a></li>
@@ -631,17 +632,17 @@ footer a { color: var(--accent); text-decoration: none; }
       AIDLC <span class="accent">AUTOPILOT</span> <span class="accent2">HARNESS</span>
     </h1>
     <p class="hero-sub fade-up delay-2">
-      An end-to-end SDLC harness that drives a requirement from plan to merged PR through eight coordinating agents — where the review gates are <strong>executable code, not prompt instructions</strong>.<br>
+      An end-to-end SDLC harness that drives a requirement from plan to merged PR through ten coordinating skills — and can drain a decomposed epic unattended overnight — where the review gates are <strong>executable code, not prompt instructions</strong>.<br>
       The design question throughout: which guarantees does a machine actually check, and which did we merely ask an agent to honor?
     </p>
     <div class="hero-stats fade-up delay-3">
       <div class="hero-stat">
-        <span class="num">8</span>
-        <span class="label">COORDINATING AGENTS</span>
+        <span class="num">10</span>
+        <span class="label">COORDINATING SKILLS</span>
       </div>
       <div class="hero-stat">
         <span class="num">14</span>
-        <span class="label">FAIL-CLOSED GATES</span>
+        <span class="label">CONDITIONS THAT PULL IN A HUMAN</span>
       </div>
       <div class="hero-stat">
         <span class="num">3</span>
@@ -674,7 +675,7 @@ footer a { color: var(--accent); text-decoration: none; }
 flowchart TD
     subgraph PROSE["PROSE — asked to honour it"]
         direction LR
-        A["A · Plan"] --> B["B · Decompose"] --> C["C · Red-team<br/>the plan, not the code"] --> D["D · Checkpoint<br/>human gate"]
+        A["A · Plan"] --> B["B · Decompose"] --> C["C · Red-team<br/>the plan, not the code"] --> D["D · Checkpoint<br/>human gate · preflight-doctor"]
     end
     subgraph CODE["CODE — the JS workflow checks it"]
         direction LR
@@ -706,6 +707,7 @@ flowchart TD
       <div class="win-category">The checkpoint, precisely</div>
       <ul class="win-items">
         <li><code>D · Checkpoint</code> is <strong>once per run</strong>, not once per PR — it gates whether execution starts at all.</li>
+        <li>Its go/no-go is produced by <code>ap-preflight-doctor</code>, which <strong>simulates every admit gate and bead barrier without launching work</strong> and auto-repairs only what is deterministic.</li>
         <li>Whether an individual PR merges without a human is decided far later, by the merge gate in stage C.</li>
       </ul>
     </div>
@@ -774,7 +776,7 @@ flowchart TD
 
     subgraph A["A · ADMISSION — read-only, nothing mutated yet"]
         direction LR
-        A1["A1 · Preflight<br/>reconciliation"] --> A2["A2 · Discovery"] --> A3["A3 · Quality bar"] --> A4["A4 · Membership"] --> A5["A5 · Allowlist"]
+        A1["A1 · Preflight<br/>reconciliation"] --> A2["A2 · Discovery"] --> A2r["A2r · Confidence<br/>repair"] --> A3["A3 · Quality bar<br/>conf ≥ 0.70"] --> A4["A4 · Membership"] --> A5["A5 · Allowlist"]
     end
 
     A5 --> DRY{"dry run?"}
@@ -815,8 +817,8 @@ flowchart TD
   <div class="solved-row" style="grid-template-columns:1fr 1fr 1fr;margin-top:36px;">
     <div class="solved-card">
       <div class="solved-label">Bound 01</div>
-      <div class="solved-title">4 items per run</div>
-      <div class="solved-desc">Work is discovered in full, then capped as whole groups — never a partial group, because a half-executed epic is worse than an unstarted one.</div>
+      <div class="solved-title">8 items per run</div>
+      <div class="solved-desc"><code>MAX_TASKS</code> defaults to 8 — overridable within [1, 10]. Work is discovered in full, then capped as whole groups — never a partial group, because a half-executed epic is worse than an unstarted one.</div>
     </div>
     <div class="solved-card">
       <div class="solved-label">Bound 02</div>
@@ -845,11 +847,15 @@ flowchart TD
 <span class="c">// so reviewer independence is verifiable rather than claimed</span><br><br>
 <span class="k">MECHANICAL_MODEL</span>&nbsp;&nbsp;<span class="d">haiku</span>&nbsp;&nbsp;&nbsp;<span class="com">reconciliation · discovery · diff reads · CI read · merge mechanics · issue filing</span><br>
 <span class="k">EXECUTOR_MODEL</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="d">sonnet</span>&nbsp;&nbsp;<span class="com">implementation · the fixer</span><br>
-<span class="k">REVIEW_MODEL</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="d">sonnet</span>&nbsp;&nbsp;<span class="com">security + code review</span><br>
-<span class="k">PEER_MODEL</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="d">opus</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="com">peer review · red team — the adversarial tier</span><br><br>
+<span class="k">REVIEW_MODEL</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="d">sonnet</span>&nbsp;&nbsp;<span class="com">security + code review · red-team lenses 1 / 3 / 4</span><br>
+<span class="k">PEER_MODEL</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="d">opus</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="com">peer review · red-team lenses 2 / 5 + synthesis — the adversarial tier</span><br><br>
+<span class="c">// aliases resolve against the trusted profile, not an agent's self-report:</span><br>
+<span class="c">//   haiku → <span class="s">claude-haiku-4-5</span> · sonnet → <span class="s">claude-sonnet-5</span> · opus → <span class="s">claude-opus-4-8</span></span><br>
+<span class="c">// tier_separation is computed in JS from the resolved model IDs.</span><br><br>
 <span class="c">// executor and peer MUST resolve to different model IDs or the run stops —</span><br>
 <span class="c">// unless a human passes <span class="n">allowSingleTier</span> with a written acceptance.</span><br>
-<span class="c">// And then nothing auto-merges: the waiver buys execution, never the merge.</span>
+<span class="c">// And then nothing auto-merges: the waiver buys execution, never the merge.</span><br>
+<span class="c">// Unattended (auto-execute) never accepts it: allowSingleTier is off the allowlist.</span>
   </div>
 </section>
 
@@ -1142,6 +1148,113 @@ flowchart LR
 
 <hr class="divider">
 
+<!-- ══════════════════ UNATTENDED ══════════════════ -->
+<section id="unattended" style="max-width:100%;padding-left:32px;padding-right:32px;">
+  <div class="sec-header">
+    <div class="sec-tag">Overnight Drive</div>
+    <h2 class="sec-title">DRAINING AN EPIC, UNATTENDED</h2>
+    <p class="sec-desc">
+      <code>ap-auto-execute</code> takes an overnight iteration loop and keeps this harness's gate. An attended run <strong>stalls at the first blocking condition and asks a human</strong>; the unattended driver instead <strong>merges the mergeable, files a classified issue for everything else, and hands a draft PR to the morning</strong>. It adds no merge logic of its own — the only change inside the child workflow is a single <code>autoMode</code> flag. Everything read-only still happens first, so a night that stops early has merged nothing.
+    </p>
+  </div>
+
+  <div class="diagram-frame">
+    <div class="diagram-bar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="diagram-label">auto-execute — preflight · admit · drain · hand off</span></div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart TD
+    P(["P · Preflight<br/>doctor go / no-go"]) --> GO{"GO?"}
+    GO -.->|"NO-GO"| STOP(["not launched —<br/>seconds, not a night"])
+    GO -->|yes| A1
+
+    subgraph A["A · ADMIT — nothing merged yet"]
+        direction LR
+        A1["Validate YAML<br/>range-checked"] --> A2["Resolve<br/>EPIC → slug"] --> A3["Base branch<br/>off parent, never reset"] --> A4["ccusage<br/>headroom"]
+    end
+
+    A4 --> HR{"headroom +<br/>token budget?"}
+    HR -.->|no| HO
+    HR -->|yes| B1
+
+    subgraph B["B · DRAIN — one iteration per pass"]
+        direction LR
+        B1["Discover<br/>gen ≤ cap"] --> B2["Drop what an<br/>earlier pass settled"] --> B3["Prove membership<br/>pure JS"] --> B4["Run ap-execute<br/>autoMode"] --> B5["Classify<br/>reasons"] --> B6["Collect filed<br/>beads"]
+    end
+
+    B6 --> LOOP{"ready set changed<br/>AND breaker OK?"}
+    LOOP -->|yes| B1
+    LOOP -.->|"identical set · breaker ·<br/>budget · halt · injection"| HO
+
+    subgraph C["C · HAND OFF — always runs, even after a halt"]
+        direction LR
+        HO["Compute<br/>manifest"] --> DR{"anything<br/>needs a human?"}
+        DR -->|yes| DPR(["open DRAFT<br/>morning PR"])
+        DR -->|no| RPR(["open ready<br/>morning PR"])
+    end
+      </div>
+    </div>
+  </div>
+
+  <div class="wins-grid" style="margin-top:24px;">
+    <div class="win-card">
+      <div class="win-category">Merge instead of stall</div>
+      <ul class="win-items">
+        <li><code>autoMode</code> inverts what a non-halt reason does: <strong>merge, then file a classified bead</strong> — instead of flagging a human and stopping the night.</li>
+        <li>It defaults <strong>off</strong> and is tested with <code>=== true</code>, never a truthy coercion — an attended run behaves exactly as before.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">What it may never merge over</div>
+      <ul class="win-items">
+        <li>Three classes are non-overridable: <code>halt</code> (prompt injection — stop the run), <code>skip</code> (branch conflict — leave it open), and <code>self-mod</code>.</li>
+        <li><strong>Self-modification</strong> is any edit to the control surface — <code>.github/</code>, the workflow source, <code>install.sh</code>, skills, allowlists, <code>CLAUDE.md</code> — the rules the harness runs by. It flags a human whatever CI says.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">Every gate-weakener is one allowlist away</div>
+      <ul class="win-items">
+        <li>The args passed to the child are an <strong>allowlist</strong>, not a denylist: only <code>resolvedModelIds</code> and <code>modelRoutingEvidence</code> get through; everything else is dropped and logged.</li>
+        <li>So <code>dryRun</code>, <code>allowSingleTier</code>, <code>runtimeIsolationProven</code>, <code>reconcile</code> and <code>base</code> <strong>cannot</strong> be smuggled in to turn a night into a silent no-op or an unproven merge.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--heading);letter-spacing:2px;margin:44px 0 20px;">THE REASON CLASS DECIDES THE NIGHT'S RESPONSE</h3>
+  <div class="code-block">
+<span class="c">// the worst reason class present is what the run's supervisor acts on</span><br>
+<span class="k">quality</span> &lt; <span class="k">mechanical</span> &lt; <span class="k">skip</span> &lt; <span class="k">evidence</span> &lt; <span class="k">safety</span> &lt; <span class="k">self-mod</span> &lt; <span class="k">halt</span><br><br>
+<span class="d">quality</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="com">merge · file a routine bead</span><br>
+<span class="d">mechanical</span>&nbsp;<span class="com">merge · force DRAFT · count toward the circuit breaker</span><br>
+<span class="d">skip</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="com">leave the PR open · file a bead (branch conflict)</span><br>
+<span class="d">evidence</span>&nbsp;&nbsp;&nbsp;<span class="com">merge · bead flagged unverified · force DRAFT</span><br>
+<span class="d">safety</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="com">merge · bead flagged needs-human · force DRAFT</span><br>
+<span class="d">self-mod</span>&nbsp;&nbsp;&nbsp;<span class="n">refuse to merge</span> <span class="com">· flag a human</span><br>
+<span class="d">halt</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="n">refuse to merge · stop the run</span> <span class="com">(injection)</span><br><br>
+<span class="c">// an unrecognised reason classifies as <span class="n">evidence</span> — fail closed, never quality.</span><br>
+<span class="c">// circuit breaker counts consecutive evidence/safety/mechanical iterations,</span><br>
+<span class="c">// not failed merges — a night that keeps producing weak evidence halts itself.</span>
+  </div>
+
+  <div class="wins-grid" style="grid-template-columns:1fr 1fr;margin-top:28px;">
+    <div class="win-card">
+      <div class="win-category">Progress is the ready set changing — nothing else</div>
+      <ul class="win-items">
+        <li>Termination keys on <strong>the discovered id set</strong>, not a return value or a count. Three earlier proxies each let a spin read as progress: an empty results array reset the breaker, a flagged-for-human result counted as work, a bead filed at the generation cap looked like motion forever.</li>
+        <li>A pass whose ready set is byte-identical to the last is the signal to hand off — <em>8 identical iterations burning ~1M tokens for zero commits</em> is exactly the failure this replaced.</li>
+      </ul>
+    </div>
+    <div class="win-card">
+      <div class="win-category">The morning PR is drafted by state, not a flag</div>
+      <ul class="win-items">
+        <li>The base branch persists between nights, so <code>--draft</code> on PR creation is inert on every run after the first. The driver reads <code>isDraft</code> back from the platform and fails closed to <code>morning_pr_needs_manual_draft</code> if a PR that owed a draft isn't one.</li>
+        <li>A backstop <code>maxIterations</code> that trips now returns <strong>needs-human with a draft</strong> — never <code>complete</code> with a ready-to-merge PR, which is precisely the label a spin wants to wear.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
 <!-- ══════════════════ HARDENING ══════════════════ -->
 <section id="hardening" style="max-width:100%;padding-left:32px;padding-right:32px;">
   <div class="sec-header">
@@ -1217,7 +1330,7 @@ flowchart LR
       </div>
       <div class="big-stat">
         <span class="num">14</span>
-        <span class="label">BLOCKING REASONS, ALL EXPLICIT</span>
+        <span class="label">HUMAN-GATE CONDITIONS, ALL EXPLICIT</span>
       </div>
       <div class="big-stat">
         <span class="num">100%</span>
@@ -1252,6 +1365,20 @@ flowchart LR
         <ul class="win-items">
           <li>Shared references own each rule once; four callers point at them and none restate them.</li>
           <li>An install script verifies frontmatter, references, parse and the offline suite after every update.</li>
+        </ul>
+      </div>
+      <div class="win-card">
+        <div class="win-category">Safety</div>
+        <ul class="win-items">
+          <li>The workflow's own test and integration dispatches carry an isolation guard; in degraded mode neither can fire, and no prompt can talk past it.</li>
+          <li>Agent-authored text inside a gate reason is quarantined before classification, so a finding titled to look like an injection cannot forge its own verdict.</li>
+        </ul>
+      </div>
+      <div class="win-card">
+        <div class="win-category">Autonomy</div>
+        <ul class="win-items">
+          <li>The same gate now runs unattended: mergeable work merges, everything else becomes a classified bead, and the control surface can never auto-merge.</li>
+          <li>A preflight simulator returns a go/no-go in seconds — a no-go costs a launch, not a night — so a spin is caught before it starts, not after ~2.5M tokens.</li>
         </ul>
       </div>
     </div>
@@ -1291,7 +1418,7 @@ flowchart LR
     <div class="win-card">
       <div class="win-category">Architecture</div>
       <ul class="win-items">
-        <li>Eight coordinating skills — one orchestrator plus seven phase agents — over a JavaScript workflow that owns every gate decision.</li>
+        <li>Ten coordinating skills — one orchestrator, four phase skills (plan, decompose, red-team, execute), two in-execute reviewers (pr-review, peer-review) and three support skills (preflight-doctor, remediate, auto-execute) — over a JavaScript workflow that owns every gate decision.</li>
         <li>Model tiers are pinned by the workflow, never self-reported by an agent, so reviewer independence is verifiable rather than claimed.</li>
       </ul>
     </div>
