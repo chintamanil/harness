@@ -1047,8 +1047,8 @@ flowchart LR
     <div class="win-card">
       <div class="win-category">Tests can never block</div>
       <ul class="win-items">
-        <li>Test lines are excluded from the blocking count, so <strong>writing more tests never pushes a PR toward a human gate</strong>.</li>
-        <li>The old 400/800 pair did exactly that — perverse in a repo whose contract mandates TDD. On one measured PR, a modest 1.3:1 test ratio blew the old total budget by 464 lines while production was over by only 123.</li>
+        <li>Test lines are excluded from the blocking count, so <strong>writing more tests never pushes a PR toward a human gate</strong> — essential in a repo whose contract mandates TDD.</li>
+        <li>The counts stay separate for exactly this reason: a measured PR with a modest 1.3:1 test ratio sat ~123 lines over on production while its combined total ran far higher — only the production figure decides the gate.</li>
       </ul>
     </div>
   </div>
@@ -1287,7 +1287,7 @@ flowchart TD
     <div class="tl-item">
       <div class="tl-time">Defect 04</div>
       <div class="tl-title">One threshold, four copies, two stale</div>
-      <div class="tl-desc">The reviewability limit lived as prose in four files. Two still carried a superseded 400/800 pair. The costly one instructed the <em>decomposer</em> to target the old limit — so it split work into more PRs than the gate required, and every extra PR paid a full review, peer and red-team cycle. Reconciled, with a shared reference as the single owner.</div>
+      <div class="tl-desc">The reviewability limit lived as prose in four files. Two still carried superseded, stricter numbers. The costly one instructed the <em>decomposer</em> to target the old limit — so it split work into more PRs than the gate required, and every extra PR paid a full review, peer and red-team cycle. Reconciled to the current <code>1,000</code> / <code>2,500</code> pair, with a shared reference as the single owner.</div>
       <div class="tl-tags"><span class="tl-tag">doc drift</span><span class="tl-tag">real cost</span></div>
     </div>
     <div class="tl-item">
